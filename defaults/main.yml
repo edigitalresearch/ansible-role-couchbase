@@ -1,7 +1,10 @@
 couchbase:
-  cluster: localhost:8091
+  adapter: ansible_eth0
   port: 8091
+  clustername: Couchbase
+  clusteraddr: localhost:8091
+  clusterram: 512
+  clusterindexram: 512
   username: Administrator
-  password: admin
-  datapath: /data/couchbase
-  hostname: cb0
+  password: Administrator
+  datapath: /data/couchbase/
