@@ -1,0 +1,7 @@
+couchbase:
+  cluster: localhost:8091
+  port: 8091
+  username: Administrator
+  password: admin
+  datapath: /data/couchbase
+  hostname: cb0

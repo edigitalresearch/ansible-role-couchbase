@@ -1,0 +1,32 @@
+- name: Couchbase | Install Couchbase Repo
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-0-x86_64.rpm
+    - couchbase-server-4.5.0
+
+- name: Couchbase | Create Data Directory
+  file:
+    path: /data
+    state: directory
+    owner: couchbase
+    group: couchbase
+    mode: 0755
+
+- name: Couchbase | Enable Startup
+  service:
+    name: couchbase-server
+    state: started
+    enabled: yes
+
+- name: Couchbase | Calculate Memory Overheads
+  set_fact:
+    cb_mem_size: "{{ ansible_memtotal_mb * 0.75}}"
+
+- name: Couchbase | Initialise Node
+  shell: /opt/couchbase/bin/couchbase-cli node-init -c "{{ couchbase.bindaddr }}" -u "{{ couchbase.user }}" -p "{{ couchbase.password }} --node-init-data-path="{{ couchbase.datapath }}" --node-init-index-path="{{ couchbase.datapath }}" --node-init-hostname="{{ couchbase.hostname }}"
+
+- name: Couchbase | Initialise Cluster
+  shell: /opt/couchbase/bin/couchbase-cli cluster-init -c "{{ couchbase.bindaddr }}" -u "{{ couchbase.user }}" -p "{{ couchbase.password }} --cluster-username="{{ couchbase.user }}" --cluster-password="{{ couchbase.password }}" --cluster-ramsize="{{ cb_mem_size }}" --cluster-port="{{ couchbase.port }}" --services=data,query,index
+  when: "'couchbase-master' in group_names"
