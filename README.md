@@ -32,7 +32,7 @@ Here is an example variables file
 ```
 ---
 couchbase:
-  adapter: ansible_eth0
+  repo: http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-0-x86_64.rpm
   port: 8091
   clustername: Couchbase
   clusteraddr: localhost:8091

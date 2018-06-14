@@ -1,16 +1,16 @@
 - name: Couchbase | Install Couchbase Repo
   yum:
-    name: http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-0-x86_64.rpm
+    name: "{{ couchbase.repo }}"
     state: present
 
 - name: Couchbase | Install Couchbase
   yum:
-    name: couchbase-server-4.5.0
+    name: "couchbase-server-{{ couchbase.version }}"
     state: present
 
 - name: Couchbase | Create Data Directory
   file:
-    path: /data
+    path: "{{ couchbase.datapath }}"
     state: directory
     owner: couchbase
     group: couchbase
