@@ -1,0 +1,55 @@
+- name: Couchbase | Install Couchbase Repo
+  yum:
+    name: "{{ couchbase.repo }}"
+    state: present
+
+- name: Couchbase | Install Couchbase
+  yum:
+    name: "couchbase-server-{{ couchbase.version }}"
+    state: present
+
+- name: Couchbase | Create Data Directory
+  file:
+    path: "{{ couchbase.datapath }}"
+    state: directory
+    owner: couchbase
+    group: couchbase
+    mode: 0755
+
+- name: Couchbase | Enable Startup
+  service:
+    name: couchbase-server
+    state: started
+    enabled: yes
+
+- name: Couchbase | Check if Couchbase initialised
+  find:
+    paths: "{{ couchbase.datapath }}"
+    file_type: directory
+    patterns: "*"
+  register: dir_files
+
+- name: Couchbase | Check Buckets
+  shell: "/opt/couchbase/bin/couchbase-cli bucket-list -c localhost:8091 -u {{ couchbase.username }} -p {{ couchbase.password }}"
+  register: bucket_checks
+
+- name: Couchbase | Initialise Node
+  shell: /opt/couchbase/bin/couchbase-cli node-init -c "localhost:8091" -u "{{ couchbase.username }}" -p "{{ couchbase.password }}" --node-init-data-path="{{ couchbase.datapath }}" --node-init-index-path="{{ couchbase.datapath }}" --node-init-hostname="{{ couchbase.hostname | default(inventory_hostname) }}"
+  when: dir_files.matched | int == 0
+
+- name: Couchbase | Initialise Cluster
+  shell: /opt/couchbase/bin/couchbase-cli cluster-init -c "localhost:8091" -u "{{ couchbase.username }}" -p "{{ couchbase.password }}" --cluster-username="{{ couchbase.username }}" --cluster-password="{{ couchbase.password }}" --cluster-ramsize="{{ couchbase.clusterram }}" --cluster-index-ramsize="{{ couchbase.clusterindexram }}" --cluster-port="{{ couchbase.port }}" --services=data,query,index
+  when: "'couchbase-master' in group_names and dir_files.matched | int == 0"
+
+- name: Couchbase | Set Cluster Name
+  shell: /opt/couchbase/bin/couchbase-cli setting-cluster -c "localhost:8091" -u "{{ couchbase.username }}" -p "{{ couchbase.password }}" --cluster-port {{ couchbase.port }} --cluster-name {{ couchbase.clustername }}
+  when: "'couchbase-master' in group_names and dir_files.matched | int == 0"
+
+- name: Couchbase | Create Buckets
+  shell: /opt/couchbase/bin/couchbase-cli bucket-create -c "localhost:8091" --bucket="{{ item.key }}" --bucket-type={{ item.value.type }} --bucket-password="{{ item.value.password | default("") }}" --bucket-port="{{ item.value.port }}" --bucket-ramsize="{{ item.value.size }}" -u "{{ couchbase.username }}" -p "{{ couchbase.password }}"
+  with_dict: "{{ couchbase.buckets | default({}) }}"
+  when: item.key not in bucket_checks.stdout_lines
+
+- name: Couchbase | Join Nodes
+  shell: /opt/couchbase/bin/couchbase-cli rebalance --cluster="{{ couchbase.clusteraddr }}" -u "{{ couchbase.username }}" -p "{{ couchbase.password }}" --server-add={{ couchbase.hostname | default(inventory_hostname) }} --server-add-username="{{ couchbase.username }}" --server-add-password="{{ couchbase.password }}" --services=data,query,index
+  when: "'couchbase-node' in group_names and dir_files.matched | int == 0"
